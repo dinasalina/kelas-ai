@@ -16,6 +16,32 @@
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('Jualan')" class="grid">
+                    <flux:sidebar.item icon="shopping-cart" :href="route('staff.orders.index')" :current="request()->routeIs('staff.orders.*')" wire:navigate>
+                        {{ __('Pesanan') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="cube" :href="route('staff.products.index')" :current="request()->routeIs('staff.products.*')" wire:navigate>
+                        {{ __('Produk') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="tag" :href="route('staff.categories.index')" :current="request()->routeIs('staff.categories.*')" wire:navigate>
+                        {{ __('Kategori') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="ticket" :href="route('staff.coupons.index')" :current="request()->routeIs('staff.coupons.*')" wire:navigate>
+                        {{ __('Kupon') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="chart-bar" :href="route('staff.reports.index')" :current="request()->routeIs('staff.reports.*')" wire:navigate>
+                        {{ __('Laporan') }}
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                @can('manage-staff')
+                    <flux:sidebar.group :heading="__('Admin')" class="grid">
+                        <flux:sidebar.item icon="users" :href="route('admin.staff.index')" :current="request()->routeIs('admin.staff.*')" wire:navigate>
+                            {{ __('Akaun Staf') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endcan
             </flux:sidebar.nav>
 
             <flux:spacer />

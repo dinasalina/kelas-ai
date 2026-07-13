@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -33,6 +34,8 @@ class UserFactory extends Factory
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
+            'role' => UserRole::Staff,
+            'is_active' => true,
         ];
     }
 
@@ -43,6 +46,36 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is an admin.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Admin,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is a staff member.
+     */
+    public function staff(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Staff,
+        ]);
+    }
+
+    /**
+     * Indicate that the user's account has been deactivated.
+     */
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => false,
         ]);
     }
 
