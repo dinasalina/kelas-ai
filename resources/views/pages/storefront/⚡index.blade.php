@@ -8,10 +8,26 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts::storefront')] #[Title('Produk')] class extends Component {
+    use WithPagination;
+
     #[Url]
     public ?int $category = null;
+
+    #[Url]
+    public string $search = '';
+
+    public function updatedCategory(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * @return \Illuminate\Database\Eloquent\Collection<int, Category>
@@ -23,17 +39,18 @@ new #[Layout('layouts::storefront')] #[Title('Produk')] class extends Component 
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Product>
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, Product>
      */
     #[Computed]
-    public function products(): \Illuminate\Database\Eloquent\Collection
+    public function products(): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         return Product::query()
             ->active()
             ->with('category')
             ->when($this->category, fn ($query) => $query->where('category_id', $this->category))
+            ->when(trim($this->search) !== '', fn ($query) => $query->where('name', 'like', '%'.trim($this->search).'%'))
             ->orderBy('name')
-            ->get();
+            ->paginate(12);
     }
 }; ?>
 
@@ -48,6 +65,10 @@ new #[Layout('layouts::storefront')] #[Title('Produk')] class extends Component 
         <p class="text-zinc-500 dark:text-zinc-400">
             {{ __('Pilih produk kegemaran anda dan buat tempahan terus — mudah, pantas, tanpa perlu mendaftar.') }}
         </p>
+    </div>
+
+    <div class="mx-auto max-w-md">
+        <flux:input wire:model.live.debounce.400ms="search" icon="magnifying-glass" :placeholder="__('Cari produk...')" clearable />
     </div>
 
     @if ($this->categories->isNotEmpty())
@@ -142,10 +163,14 @@ new #[Layout('layouts::storefront')] #[Title('Produk')] class extends Component 
         @empty
             <div class="col-span-full py-16 text-center">
                 <flux:icon.shopping-bag class="mx-auto size-10 text-zinc-300 dark:text-zinc-600" />
-                <p class="mt-3 text-zinc-500 dark:text-zinc-400">{{ __('Tiada produk buat masa ini. Sila kembali semula nanti.') }}</p>
+                <p class="mt-3 text-zinc-500 dark:text-zinc-400">
+                    {{ trim($search) !== '' ? __('Tiada produk sepadan dengan carian anda.') : __('Tiada produk buat masa ini. Sila kembali semula nanti.') }}
+                </p>
             </div>
         @endforelse
     </div>
+
+    <flux:pagination :paginator="$this->products" />
 
     <livewire:storefront.order-form-modal />
 </div>

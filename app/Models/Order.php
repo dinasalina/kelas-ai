@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
  * @property string|null $order_number
  * @property int $product_id
  * @property int|null $coupon_id
+ * @property int|null $delivery_zone_id
  * @property int|null $placed_by_staff_id
  * @property int|null $processed_by_staff_id
  * @property string $customer_name
@@ -25,6 +26,7 @@ use Illuminate\Support\Str;
  * @property int $quantity
  * @property string $unit_price
  * @property string $discount_amount
+ * @property string $delivery_fee
  * @property string $total_price
  * @property OrderStatus $status
  * @property Carbon|null $created_at
@@ -45,6 +47,7 @@ class Order extends Model
             'quantity' => 'integer',
             'unit_price' => 'decimal:2',
             'discount_amount' => 'decimal:2',
+            'delivery_fee' => 'decimal:2',
             'total_price' => 'decimal:2',
             'status' => OrderStatus::class,
         ];
@@ -64,6 +67,14 @@ class Order extends Model
     public function coupon(): BelongsTo
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    /**
+     * @return BelongsTo<DeliveryZone, $this>
+     */
+    public function deliveryZone(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryZone::class);
     }
 
     /**

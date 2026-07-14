@@ -4,6 +4,7 @@ use App\Actions\Orders\PlaceOrderAction;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidCouponException;
 use App\Models\Coupon;
+use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\Product;
 use Flux\Flux;
@@ -25,6 +26,8 @@ new class extends Component {
 
     public string $couponCode = '';
 
+    public string $deliveryZoneId = '';
+
     #[On('open-staff-order-form')]
     public function open(): void
     {
@@ -37,8 +40,18 @@ new class extends Component {
         $this->customerAddress = '';
         $this->quantity = 1;
         $this->couponCode = '';
+        $this->deliveryZoneId = '';
 
         Flux::modal('staff-order-form')->show();
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, DeliveryZone>
+     */
+    #[Computed]
+    public function deliveryZones(): \Illuminate\Database\Eloquent\Collection
+    {
+        return DeliveryZone::query()->where('is_active', true)->orderBy('name')->get();
     }
 
     /**
@@ -61,9 +74,22 @@ new class extends Component {
             'customerAddress' => ['required', 'string'],
             'quantity' => ['required', 'integer', 'min:1'],
             'couponCode' => ['nullable', 'string', 'max:50'],
+            'deliveryZoneId' => ['nullable', 'integer'],
         ]);
 
         $product = Product::findOrFail($validated['productId']);
+
+        $deliveryZone = null;
+
+        if ($this->deliveryZoneId !== '') {
+            $deliveryZone = $this->deliveryZones->firstWhere('id', (int) $this->deliveryZoneId);
+
+            if (! $deliveryZone) {
+                $this->addError('deliveryZoneId', __('Sila pilih kawasan penghantaran yang sah.'));
+
+                return;
+            }
+        }
 
         $coupon = null;
 
@@ -71,7 +97,7 @@ new class extends Component {
             $coupon = Coupon::query()->whereRaw('UPPER(code) = ?', [strtoupper(trim($validated['couponCode']))])->first();
 
             if (! $coupon || ! $coupon->isValid($product->price * $validated['quantity'])) {
-                $this->addError('couponCode', __('This coupon code is not valid.'));
+                $this->addError('couponCode', __('Kod kupon ini tidak sah.'));
 
                 return;
             }
@@ -86,6 +112,7 @@ new class extends Component {
                 quantity: $validated['quantity'],
                 placedByStaff: Auth::user(),
                 coupon: $coupon,
+                deliveryZone: $deliveryZone,
             );
         } catch (InsufficientStockException $exception) {
             $this->addError('quantity', $exception->getMessage());
@@ -118,6 +145,15 @@ new class extends Component {
         <flux:input wire:model="customerPhone" :label="__('Phone number')" required />
 
         <flux:textarea wire:model="customerAddress" :label="__('Address')" required />
+
+        <flux:select wire:model="deliveryZoneId" :label="__('Kawasan Penghantaran')">
+            <flux:select.option value="">{{ __('Ambil Sendiri — Percuma') }}</flux:select.option>
+            @foreach ($this->deliveryZones as $zone)
+                <flux:select.option value="{{ $zone->id }}">
+                    {{ $zone->name }} (+{{ \Illuminate\Support\Number::currency($zone->fee, in: 'MYR', locale: 'ms') }})
+                </flux:select.option>
+            @endforeach
+        </flux:select>
 
         <flux:input wire:model="quantity" :label="__('Quantity')" type="number" min="1" required />
 

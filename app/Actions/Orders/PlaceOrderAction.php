@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidCouponException;
 use App\Models\Coupon;
+use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
@@ -15,6 +16,8 @@ class PlaceOrderAction
 {
     /**
      * Place an order for the given product, decrementing its stock.
+     *
+     * A null delivery zone means self-pickup (no delivery fee).
      *
      * @throws InsufficientStockException
      * @throws InvalidCouponException
@@ -27,8 +30,9 @@ class PlaceOrderAction
         int $quantity,
         ?User $placedByStaff = null,
         ?Coupon $coupon = null,
+        ?DeliveryZone $deliveryZone = null,
     ): Order {
-        return DB::transaction(function () use ($product, $customerName, $customerPhone, $customerAddress, $quantity, $placedByStaff, $coupon) {
+        return DB::transaction(function () use ($product, $customerName, $customerPhone, $customerAddress, $quantity, $placedByStaff, $coupon, $deliveryZone) {
             /** @var Product $lockedProduct */
             $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
 
@@ -51,6 +55,12 @@ class PlaceOrderAction
                 $discountAmount = $coupon->calculateDiscount((float) $subtotal);
             }
 
+            if ($deliveryZone && ! $deliveryZone->is_active) {
+                throw new \InvalidArgumentException('This delivery zone is no longer available.');
+            }
+
+            $deliveryFee = $deliveryZone ? (float) $deliveryZone->fee : 0;
+
             $order = new Order([
                 'customer_name' => $customerName,
                 'customer_phone' => $customerPhone,
@@ -61,10 +71,12 @@ class PlaceOrderAction
             $order->status = OrderStatus::Pending;
             $order->product_id = $lockedProduct->id;
             $order->coupon_id = $coupon?->id;
+            $order->delivery_zone_id = $deliveryZone?->id;
             $order->placed_by_staff_id = $placedByStaff?->id;
             $order->unit_price = $lockedProduct->price;
             $order->discount_amount = $discountAmount;
-            $order->total_price = $subtotal - $discountAmount;
+            $order->delivery_fee = $deliveryFee;
+            $order->total_price = $subtotal - $discountAmount + $deliveryFee;
             $order->save();
 
             $order->statusHistories()->create([

@@ -22,6 +22,8 @@ new class extends Component {
 
     public string $price = '';
 
+    public string $costPrice = '';
+
     public int $stock = 0;
 
     public bool $isActive = true;
@@ -41,6 +43,7 @@ new class extends Component {
             $this->name = $this->product->name;
             $this->description = (string) $this->product->description;
             $this->price = (string) $this->product->price;
+            $this->costPrice = (string) $this->product->cost_price;
             $this->stock = $this->product->stock;
             $this->isActive = $this->product->is_active;
         } else {
@@ -49,6 +52,7 @@ new class extends Component {
             $this->name = '';
             $this->description = '';
             $this->price = '';
+            $this->costPrice = '';
             $this->stock = 0;
             $this->isActive = true;
         }
@@ -72,6 +76,7 @@ new class extends Component {
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'price' => ['required', 'numeric', 'min:0'],
+            'costPrice' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
             'image' => ['nullable', 'image', 'max:2048'],
         ]);
@@ -87,6 +92,7 @@ new class extends Component {
             'name' => $validated['name'],
             'description' => $validated['description'],
             'price' => $validated['price'],
+            'cost_price' => $validated['costPrice'] !== null && $validated['costPrice'] !== '' ? $validated['costPrice'] : 0,
             'image_path' => $imagePath,
             'stock' => $validated['stock'],
             'is_active' => $this->isActive,
@@ -128,9 +134,11 @@ new class extends Component {
         <flux:textarea wire:model="description" :label="__('Description')" />
 
         <div class="grid grid-cols-2 gap-4">
-            <flux:input wire:model="price" :label="__('Price (RM)')" type="number" step="0.01" min="0" required />
-            <flux:input wire:model="stock" :label="__('Stock')" type="number" min="0" required />
+            <flux:input wire:model="price" :label="__('Harga Jual (RM)')" type="number" step="0.01" min="0" required />
+            <flux:input wire:model="costPrice" :label="__('Harga Modal (RM)')" type="number" step="0.01" min="0" :description="__('Untuk kiraan untung')" />
         </div>
+
+        <flux:input wire:model="stock" :label="__('Stock')" type="number" min="0" required />
 
         <flux:switch wire:model="isActive" :label="__('Active (visible on storefront)')" />
 

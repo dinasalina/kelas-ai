@@ -20,13 +20,15 @@ class ProductFactory extends Factory
     public function definition(): array
     {
         $name = fake()->unique()->words(3, true);
+        $price = fake()->randomFloat(2, 5, 500);
 
         return [
             'category_id' => Category::factory(),
             'name' => $name,
             'slug' => Str::slug($name).'-'.fake()->unique()->numberBetween(1000, 9999),
             'description' => fake()->optional()->sentence(),
-            'price' => fake()->randomFloat(2, 5, 500),
+            'price' => $price,
+            'cost_price' => round($price * fake()->randomFloat(2, 0.4, 0.7), 2),
             'image_path' => null,
             'stock' => fake()->numberBetween(1, 100),
             'is_active' => true,

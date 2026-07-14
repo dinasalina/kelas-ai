@@ -161,6 +161,18 @@
                         </div>
                     @endif
 
+                    <div class="flex justify-between">
+                        <span class="text-zinc-500">
+                            {{ __('Penghantaran') }}
+                            @if ($order->deliveryZone)
+                                ({{ $order->deliveryZone->name }})
+                            @else
+                                ({{ __('Ambil Sendiri') }})
+                            @endif
+                        </span>
+                        <span>{{ (float) $order->delivery_fee > 0 ? '+'.Number::currency($order->delivery_fee, in: 'MYR', locale: 'ms') : __('Percuma') }}</span>
+                    </div>
+
                     <div class="flex justify-between border-t border-zinc-300 pt-2 text-base font-bold">
                         <span>{{ __('Jumlah') }}</span>
                         <span>{{ Number::currency($order->total_price, in: 'MYR', locale: 'ms') }}</span>

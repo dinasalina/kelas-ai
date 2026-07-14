@@ -27,6 +27,9 @@
                     <flux:sidebar.item icon="tag" :href="route('staff.categories.index')" :current="request()->routeIs('staff.categories.*')" wire:navigate>
                         {{ __('Kategori') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="map-pin" :href="route('staff.delivery-zones.index')" :current="request()->routeIs('staff.delivery-zones.*')" wire:navigate>
+                        {{ __('Kawasan Penghantaran') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="ticket" :href="route('staff.coupons.index')" :current="request()->routeIs('staff.coupons.*')" wire:navigate>
                         {{ __('Kupon') }}
                     </flux:sidebar.item>

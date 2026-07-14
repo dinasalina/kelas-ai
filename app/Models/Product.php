@@ -18,13 +18,14 @@ use Illuminate\Support\Carbon;
  * @property string $slug
  * @property string|null $description
  * @property string $price
+ * @property string $cost_price
  * @property string|null $image_path
  * @property int $stock
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['category_id', 'name', 'slug', 'description', 'price', 'image_path', 'stock', 'is_active'])]
+#[Fillable(['category_id', 'name', 'slug', 'description', 'price', 'cost_price', 'image_path', 'stock', 'is_active'])]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
@@ -37,6 +38,7 @@ class Product extends Model
     {
         return [
             'price' => 'decimal:2',
+            'cost_price' => 'decimal:2',
             'stock' => 'integer',
             'is_active' => 'boolean',
         ];

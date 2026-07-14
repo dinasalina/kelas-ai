@@ -4,6 +4,7 @@ use App\Enums\CouponType;
 use App\Models\Coupon;
 use Illuminate\Support\Number;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -16,7 +17,7 @@ new #[Title('Coupons')] class extends Component {
     #[Computed]
     public function coupons()
     {
-        return Coupon::orderBy('code')->get();
+        return Coupon::withCount('orders')->orderBy('code')->get();
     }
 
     public function delete(int $couponId): void
@@ -26,6 +27,12 @@ new #[Title('Coupons')] class extends Component {
         $this->authorize('delete', $coupon);
 
         $coupon->delete();
+    }
+
+    #[On('coupon-saved')]
+    public function refreshCoupons(): void
+    {
+        // Recomputes the computed property on the next render.
     }
 }; ?>
 
@@ -49,6 +56,7 @@ new #[Title('Coupons')] class extends Component {
             <flux:table.column>{{ __('Min. Pesanan') }}</flux:table.column>
             <flux:table.column>{{ __('Luput') }}</flux:table.column>
             <flux:table.column>{{ __('Status') }}</flux:table.column>
+            <flux:table.column>{{ __('Digunakan') }}</flux:table.column>
             <flux:table.column>{{ __('Tindakan') }}</flux:table.column>
         </flux:table.columns>
 
@@ -71,13 +79,14 @@ new #[Title('Coupons')] class extends Component {
                             {{ $coupon->is_active ? __('Aktif') : __('Tidak aktif') }}
                         </flux:badge>
                     </flux:table.cell>
+                    <flux:table.cell>{{ __(':count kali', ['count' => $coupon->orders_count]) }}</flux:table.cell>
                     <flux:table.cell>
                         <div class="flex gap-2">
                             <flux:button size="sm" wire:click="$dispatch('open-coupon-form', { couponId: {{ $coupon->id }} })">
                                 {{ __('Edit') }}
                             </flux:button>
 
-                            @if (! $coupon->orders()->exists())
+                            @if ($coupon->orders_count === 0)
                                 <flux:button
                                     size="sm"
                                     variant="danger"

@@ -3,9 +3,15 @@
 use App\Enums\CouponType;
 use App\Enums\OrderStatus;
 use App\Models\Coupon;
+use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\Product;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
+
+beforeEach(function () {
+    RateLimiter::clear('place-order:127.0.0.1');
+});
 
 test('a guest can place an order for an available product', function () {
     $product = Product::factory()->create(['stock' => 10, 'price' => 25]);
@@ -167,4 +173,89 @@ test('a coupon below its minimum order amount is rejected', function () {
         ->assertHasErrors('couponCode');
 
     expect(Order::count())->toBe(0);
+});
+
+test('an order with a delivery zone adds the fee to the total', function () {
+    $product = Product::factory()->create(['stock' => 10, 'price' => 20]);
+    $zone = DeliveryZone::factory()->create(['fee' => 5]);
+
+    Livewire::test('storefront.order-form-modal')
+        ->call('open', $product->id)
+        ->set('customerName', 'Ali')
+        ->set('customerPhone', '012-3456789')
+        ->set('customerAddress', '123 Jalan Test')
+        ->set('quantity', 2)
+        ->set('deliveryZoneId', (string) $zone->id)
+        ->call('placeOrder')
+        ->assertHasNoErrors();
+
+    $order = Order::firstOrFail();
+
+    expect($order->delivery_zone_id)->toBe($zone->id);
+    expect((float) $order->delivery_fee)->toBe(5.0);
+    expect((float) $order->total_price)->toBe(45.0);
+});
+
+test('self-pickup orders have no delivery fee', function () {
+    $product = Product::factory()->create(['stock' => 10, 'price' => 20]);
+    DeliveryZone::factory()->create(['fee' => 5]);
+
+    Livewire::test('storefront.order-form-modal')
+        ->call('open', $product->id)
+        ->set('customerName', 'Ali')
+        ->set('customerPhone', '012-3456789')
+        ->set('customerAddress', 'Ambil di kedai')
+        ->set('quantity', 1)
+        ->set('deliveryZoneId', '')
+        ->call('placeOrder')
+        ->assertHasNoErrors();
+
+    $order = Order::firstOrFail();
+
+    expect($order->delivery_zone_id)->toBeNull();
+    expect((float) $order->delivery_fee)->toBe(0.0);
+    expect((float) $order->total_price)->toBe(20.0);
+});
+
+test('an inactive delivery zone is rejected', function () {
+    $product = Product::factory()->create(['stock' => 10, 'price' => 20]);
+    $zone = DeliveryZone::factory()->inactive()->create(['fee' => 5]);
+
+    Livewire::test('storefront.order-form-modal')
+        ->call('open', $product->id)
+        ->set('customerName', 'Ali')
+        ->set('customerPhone', '012-3456789')
+        ->set('customerAddress', '123 Jalan Test')
+        ->set('quantity', 1)
+        ->set('deliveryZoneId', (string) $zone->id)
+        ->call('placeOrder')
+        ->assertHasErrors('deliveryZoneId');
+
+    expect(Order::count())->toBe(0);
+});
+
+test('guest ordering is rate limited after five orders', function () {
+    $product = Product::factory()->create(['stock' => 100, 'price' => 10]);
+
+    for ($i = 1; $i <= 5; $i++) {
+        Livewire::test('storefront.order-form-modal')
+            ->call('open', $product->id)
+            ->set('customerName', "Pelanggan {$i}")
+            ->set('customerPhone', '012-3456789')
+            ->set('customerAddress', '123 Jalan Test')
+            ->set('quantity', 1)
+            ->call('placeOrder')
+            ->assertHasNoErrors();
+    }
+
+    Livewire::test('storefront.order-form-modal')
+        ->call('open', $product->id)
+        ->set('customerName', 'Pelanggan 6')
+        ->set('customerPhone', '012-3456789')
+        ->set('customerAddress', '123 Jalan Test')
+        ->set('quantity', 1)
+        ->call('placeOrder')
+        ->assertHasErrors('customerName');
+
+    expect(Order::count())->toBe(5);
 });

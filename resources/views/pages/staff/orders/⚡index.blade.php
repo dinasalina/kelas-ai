@@ -13,46 +13,77 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Title('Pesanan')] class extends Component {
+    use \Livewire\WithPagination;
+
     #[Url]
     public string $view = 'kanban';
 
     #[Url]
     public ?string $status = null;
 
+    #[Url]
+    public string $search = '';
+
     public function mount(): void
     {
         $this->authorize('viewAny', Order::class);
     }
 
-    /**
-     * Orders for the table view.
-     *
-     * @return \Illuminate\Database\Eloquent\Collection<int, Order>
-     */
-    #[Computed]
-    public function orders(): \Illuminate\Database\Eloquent\Collection
+    public function updatedSearch(): void
     {
-        return Order::query()
-            ->with(['product', 'placedByStaff'])
-            ->when($this->status, fn ($query) => $query->where('status', $this->status))
-            ->latest()
-            ->get();
+        $this->resetPage();
     }
 
     /**
-     * Orders grouped by status for the kanban view.
+     * Apply the search box filter (order number, customer name, or phone).
      *
-     * @return \Illuminate\Support\Collection<string, \Illuminate\Database\Eloquent\Collection<int, Order>>
+     * @param  \Illuminate\Database\Eloquent\Builder<Order>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<Order>
+     */
+    protected function applySearch(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        $term = trim($this->search);
+
+        return $query->when($term !== '', fn ($query) => $query->where(function ($query) use ($term) {
+            $query->where('order_number', 'like', "%{$term}%")
+                ->orWhere('customer_name', 'like', "%{$term}%")
+                ->orWhere('customer_phone', 'like', "%{$term}%");
+        }));
+    }
+
+    /**
+     * Orders for the table view.
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, Order>
+     */
+    #[Computed]
+    public function orders(): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        return $this->applySearch(Order::query())
+            ->with(['product', 'placedByStaff'])
+            ->when($this->status, fn ($query) => $query->where('status', $this->status))
+            ->latest()
+            ->paginate(10);
+    }
+
+    /**
+     * Orders grouped by status for the kanban view. The Completed column only
+     * shows the most recent 10 to keep the board manageable.
+     *
+     * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, Order>>
      */
     #[Computed]
     public function ordersByStatus(): \Illuminate\Support\Collection
     {
-        return Order::query()
+        return $this->applySearch(Order::query())
             ->with(['product', 'placedByStaff'])
             ->where('status', '!=', OrderStatus::Cancelled)
             ->latest()
             ->get()
-            ->groupBy(fn (Order $order) => $order->status->value);
+            ->groupBy(fn (Order $order) => $order->status->value)
+            ->map(fn ($orders, string $statusValue) => $statusValue === OrderStatus::Completed->value
+                ? $orders->take(10)
+                : $orders);
     }
 
     #[Computed]
@@ -127,6 +158,10 @@ new #[Title('Pesanan')] class extends Component {
         </div>
     </div>
 
+    <div class="max-w-sm">
+        <flux:input wire:model.live.debounce.400ms="search" icon="magnifying-glass" :placeholder="__('Cari no. pesanan / nama / telefon...')" clearable />
+    </div>
+
     @if ($view === 'kanban')
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             @foreach (\App\Enums\OrderStatus::flow() as $columnStatus)
@@ -198,7 +233,7 @@ new #[Title('Pesanan')] class extends Component {
             @endforeach
         </div>
 
-        <flux:table>
+        <flux:table :paginate="$this->orders">
             <flux:table.columns>
                 <flux:table.column>{{ __('No. Pesanan') }}</flux:table.column>
                 <flux:table.column>{{ __('Produk') }}</flux:table.column>

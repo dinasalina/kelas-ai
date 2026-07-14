@@ -3,19 +3,35 @@
 use App\Models\Product;
 use Illuminate\Support\Number;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Title('Products')] class extends Component {
+    use WithPagination;
+
+    #[Url]
+    public string $search = '';
+
     public function mount(): void
     {
         $this->authorize('viewAny', Product::class);
     }
 
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
     #[Computed]
     public function products()
     {
-        return Product::with('category')->orderBy('name')->get();
+        return Product::with('category')
+            ->when(trim($this->search) !== '', fn ($query) => $query->where('name', 'like', '%'.trim($this->search).'%'))
+            ->orderBy('name')
+            ->paginate(10);
     }
 
     public function delete(int $productId): void
@@ -25,6 +41,12 @@ new #[Title('Products')] class extends Component {
         $this->authorize('delete', $product);
 
         $product->delete();
+    }
+
+    #[On('product-saved')]
+    public function refreshProducts(): void
+    {
+        // Recomputes the computed property on the next render.
     }
 }; ?>
 
@@ -40,7 +62,11 @@ new #[Title('Products')] class extends Component {
         </flux:button>
     </div>
 
-    <flux:table>
+    <div class="max-w-sm">
+        <flux:input wire:model.live.debounce.400ms="search" icon="magnifying-glass" :placeholder="__('Cari produk...')" clearable />
+    </div>
+
+    <flux:table :paginate="$this->products">
         <flux:table.columns>
             <flux:table.column>{{ __('Name') }}</flux:table.column>
             <flux:table.column>{{ __('Category') }}</flux:table.column>

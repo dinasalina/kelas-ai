@@ -14,6 +14,6 @@ Route::get('resit/{order}', function (Request $request, Order $order) {
     abort_unless($isStaff || $request->hasValidSignature(), 403);
 
     return view('receipts.show', [
-        'order' => $order->load(['product', 'coupon', 'statusHistories']),
+        'order' => $order->load(['product', 'coupon', 'deliveryZone', 'statusHistories']),
     ]);
 })->name('receipt.show');

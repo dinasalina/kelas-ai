@@ -10,5 +10,6 @@ Route::middleware(['auth', 'verified', 'role:admin,staff'])
         Route::livewire('products', 'pages::staff.products.index')->name('products.index');
         Route::livewire('categories', 'pages::staff.categories.index')->name('categories.index');
         Route::livewire('coupons', 'pages::staff.coupons.index')->name('coupons.index');
+        Route::livewire('delivery-zones', 'pages::staff.delivery-zones.index')->name('delivery-zones.index');
         Route::livewire('reports', 'pages::staff.reports.index')->name('reports.index');
     });
